@@ -1,0 +1,5 @@
+deepseek_key = "sk-ea33c3d4bc4841188d880775f0053443"
+deepseek_url = "https://api.deepseek.com"
+my_key = "sk-114514"
+my_url = "http://127.0.0.1:65530/api/oai/v1"
+livs_key = "http://117.72.123.243:12345/v1"
