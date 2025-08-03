@@ -2,14 +2,15 @@ import math
 import aiohttp
 import requests
 import asyncio
+import fireflybot.plugins.firefly.llm_config as llm_config
 def request(text):
-    url = "http://127.0.0.1:8003/embeddings"
+    url = llm_config.embed_url
     payload = {
         "content" : str(text)#请求的文本（无意义str）
         }
     headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer no-key",#没写key
+            "Authorization": f"Bearer {llm_config.embed_key}",#没写key
             "content-type": "application/json"
         }
     response = requests.request("POST", url, json=payload, headers=headers)
