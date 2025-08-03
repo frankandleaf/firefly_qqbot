@@ -15,3 +15,7 @@ model_max_tokens = 300#模型本体的最大token数
 model_temperature = 0.9#模型本体的温度
 model_frequency_penalty = 1.2#模型本体的频率惩罚
 model_presence_penalty = 0.5#模型本体的存在惩罚
+memory_prifix = "【流萤的记忆】"#记忆的提示词前缀
+model_name = "666"#模型本体的名称
+wav_path = "/home/frank/temp_voice/temp_out.wav"#聊天中语音合成后的文件路径
+save_path = "/home/frank/temp_image.png"  # 聊天中图片保存路径

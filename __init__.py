@@ -12,6 +12,8 @@ from nonebot.rule import to_me
 from fireflybot.plugins.firefly.faisss import check
 import ssl
 import openai
+# 导入图片处理模块
+import fireflybot.plugins.firefly.image_process as image_process
 
 # ================== 配置与全局变量 ==================
 import fireflybot.plugins.firefly.llm_config as llm_config
@@ -119,7 +121,7 @@ async def gptsovits(gottext: str) -> str:
 
 # ================== 上下文摘要 ==================
 
-async def ds_context(nickname="离心叶", conversation_history=None):
+async def ds_context(nickname="", conversation_history=None):
     """调用摘要模型，生成当前情景"""
     if conversation_history is None or len(conversation_history) < 2:
         return False
@@ -161,10 +163,7 @@ def append_message(conversation_history, role, content, image=""):
         if not conversation_history or conversation_history[-1].get("role") != role:
             if image:
                 # 把图片base64以字符串形式拼接到content
-                conversation_history.append({
-                    "role": role,
-                    "content": f"{content}\n[图片(base64)]: {image}"
-                })
+                conversation_history.append({"role":"user","content":[{"type":"text","text":content},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{image}"}}]})
             else:
                 conversation_history.append({
                     "role": role,
@@ -173,10 +172,16 @@ def append_message(conversation_history, role, content, image=""):
         else:
             last_msg = conversation_history[-1]["content"]
             conversation_history.pop()
-            # 合并文本
-            conversation_history.append({"role": role, "content": f"{last_msg}\n{content}"})
-    except Exception as e:
-        print(f"添加消息出现问题:{e}")
+            # 如果最后一条消息包含图片，不能简单合并文本
+            if isinstance(last_msg, list):
+                # 如果最后一条是图片消息，创建新的消息
+                conversation_history.append({
+                    "role": role,
+                    "content": content
+                })
+            else:
+                # 合并文本
+                conversation_history.append({"role": role, "content": f"{last_msg}\n{content}"})
     except Exception as e:
         print(f"添加消息出现问题:{e}")
 
@@ -214,17 +219,54 @@ async def process_user_request(bot: Bot, event: MessageEvent):
     images = [seg.data["url"] for seg in message if seg.type == "image"]
     user_message = event.message.extract_plain_text()
     img_base64 = ""
+    has_image = False
+    save_path = llm_config.save_path  # 初始化save_path
+    
     if images:
+        has_image = True
         for url in images:
             try:
                 urll = str(url.replace("\\", ""))
-                save_path = "/home/frank/temp_image.png"
                 await download_image(urll, save_path)
-                with open(save_path, 'rb') as img_file:
-                    img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
-                append_message(conversation_history,"user",f"{nickname}: {user_message}",img_base64)
+                # 使用image_process模块处理图片
+                response_data = await image_process.image_process_async(save_path, conversation_history, user_message, nickname)
+                if response_data and 'choices' in response_data and len(response_data['choices']) > 0:
+                    response = response_data['choices'][0]['message']['content']
+                    if response and isinstance(response, str):  # 确保response不为None且为字符串
+                        print(f"图片处理回复: {response}")
+                        # 直接发送回复，不需要再次调用模型
+                        for i in split_message(response):
+                            await asyncio.sleep(len(i) /2 * 0.8)  # 拟人化的等待
+                            await bot.send(event=event, message=Message(i))
+                            append_message(conversation_history,"assistant",i)
+                    
+                    # 语音合成与发送
+                    try:
+                        await gptsovits(response)
+                        wav_path = llm_config.wav_path
+                        await bot.send(event, message=MessageSegment.record(wav_path))
+                    except Exception as e:
+                        print(f"语音生成或发送失败: {str(e)}")
+                    return  # 图片处理完成，直接返回
+                else:
+                    print("图片处理失败，使用默认处理方式")
+                    with open(save_path, 'rb') as img_file:
+                        img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+                    append_message(conversation_history,"user",f"{nickname}: {user_message}",img_base64)
             except Exception as e:
                 print("图片处理过程出现问题：", str(e))
+                # 如果图片处理失败，使用默认方式
+                try:
+                    with open(save_path, 'rb') as img_file:
+                        img_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+                    append_message(conversation_history,"user",f"{nickname}: {user_message}",img_base64)
+                except:
+                    pass
+    
+    # 如果没有图片或图片处理失败，使用默认处理方式
+    if not has_image:
+        append_message(conversation_history,"user",f"{nickname}: {user_message}")
+    
     # 获取模型回复
     response = await get_model_response(user_message, nickname, conversation_history, is_group,img_base64)
     img_base64 = ""
@@ -247,14 +289,21 @@ async def get_model_response(user_message: str, nickname="离心叶", conversati
     if conversation_history is None:
         conversation_history = []
     RAG_list = None
+    
+    # 检查最后一条消息是否包含图片
+    has_image_in_last_message = False
+    if conversation_history and isinstance(conversation_history[-1].get('content'), list):
+        has_image_in_last_message = any(item.get('type') == 'image_url' for item in conversation_history[-1].get('content', []))
+    
     # 只在最后一条不是图片时做RAG
-    RAG_list = process_rag(user_message, nickname, conversation_history,img)
+    if not has_image_in_last_message:
+        RAG_list = process_rag(user_message, nickname, conversation_history,img)
+    
     completion = await client.chat.completions.create(
         model="output",
         messages=conversation_history,
         max_tokens=llm_config.model_max_tokens,
         frequency_penalty=llm_config.model_frequency_penalty,
-        extra_body={'repetition_penalty': 1.2},
         presence_penalty=llm_config.model_presence_penalty,
         temperature=llm_config.model_temperature,
         top_p=0.9,
@@ -262,9 +311,11 @@ async def get_model_response(user_message: str, nickname="离心叶", conversati
     )
     response = completion.choices[0].message.content
     print(f"模型回复: {response}")
-    if RAG_list:
+    
+    if RAG_list and not has_image_in_last_message:
         conversation_history.pop()
         append_message(conversation_history,"user",f"{nickname}: {user_message}")
+    
     if response and len(response) < 20:
         r_counter += 1
     else:
@@ -277,8 +328,6 @@ async def get_model_response(user_message: str, nickname="离心叶", conversati
         if ds_context_response is not False:
             append_message(conversation_history,"system",f"当前情景:{ds_context_response or ''}")
         conversation_history[:] = clean_current_context(conversation_history)
-    if response is not None:
-        response = response.replace("<think>", "").replace("</think>", "").replace("\n\n", "").replace("流萤:", "")
     else:
         response = ""
     return response
@@ -291,11 +340,11 @@ def process_rag(user_message, nickname, conversation_history,img = ""):
     RAG_list = None
     # 只在最后一条不是图片时做RAG
     if not any(isinstance(msg['content'], list) for msg in conversation_history[-1:]):
-        RAG_Q = user_message.replace("你", "流萤").replace("我", "离心叶").replace(nickname + ":", "")
+        RAG_Q = user_message.replace(nickname + ":", "") 
         RAG_list = check(RAG_Q, 3, 0.9)
         if RAG_list:
             RAG_str = "\n".join(RAG_list)
-            append_message(conversation_history, "user", f"{nickname}:{user_message}\n【流萤的记忆】{RAG_str}【记忆结束】",img)
+            append_message(conversation_history, "user", f"{nickname}:{user_message}\n{llm_config.memory_prifix}:{RAG_str}【记忆结束】",img)
         else:
             append_message(conversation_history, "user", f"{nickname}: {user_message}",img)
     else:
