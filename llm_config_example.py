@@ -23,6 +23,7 @@ embed_url = "http://127.0.0.1:8003/embeddings"#embedding的url
 vector_path = "/home/frank/fireflybot/fireflybot/plugins/firefly/vector.txt"#向量文件路径
 embed_key = "no-key"#embedding的key
 map_path = "/home/frank/fireflybot/fireflybot/plugins/firefly/map.txt"#map文件路径
+sovits_url = "http://127.0.0.1:9880/tts"#语音合成url
 
 
 

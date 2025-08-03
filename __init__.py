@@ -103,12 +103,12 @@ async def gptsovits(gottext: str) -> str:
             "parallel_infer": True,
             "repetition_penalty": 1.35
         }
-        async with session.post("http://127.0.0.1:9880/tts", json=payload) as response:
+        async with session.post(llm_config.sovits_url, json=payload) as response:
             if response.status == 200:
                 content_type = response.headers.get('Content-Type')
                 if content_type and 'audio/wav' in content_type:
                     audio_data = await response.read()
-                    with open("/home/frank/temp_voice/temp_out.wav", "wb") as f:
+                    with open(llm_config.wav_path, "wb") as f:
                         f.write(audio_data)
                     print("Audio saved")
                     return "Audio saved as output.wav"
@@ -328,8 +328,6 @@ async def get_model_response(user_message: str, nickname="离心叶", conversati
         if ds_context_response is not False:
             append_message(conversation_history,"system",f"当前情景:{ds_context_response or ''}")
         conversation_history[:] = clean_current_context(conversation_history)
-    else:
-        response = ""
     return response
 
 ############RAG#################

@@ -6,13 +6,13 @@ import fireflybot.plugins.firefly.llm_config as llm_config
 llm_client = openai.Client(api_key="sk-",base_url="http://127.0.0.1:8002/v1")#初始化openai客户端
 index = faiss.IndexFlatL2(1024)# 构建索引(1024维)
 def request(text):
-    url = llm_config.embedding_url#请求的url，改成你自己的
+    url = llm_config.embed_url#请求的url，改成你自己的
     payload = {
         "content" : text#请求的文本
         }
     headers = {#请求头
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {llm_config.embedding_key}",#没写key
+            "Authorization": f"Bearer {llm_config.embed_key}",#没写key
             "content-type": "application/json"
         }
     response = requests.request("POST", url, json=payload, headers=headers)#发送请求
