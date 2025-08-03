@@ -19,6 +19,10 @@ memory_prifix = "【流萤的记忆】"#记忆的提示词前缀
 model_name = "666"#模型本体的名称
 wav_path = "/home/frank/temp_voice/temp_out.wav"#聊天中语音合成后的文件路径
 save_path = "/home/frank/temp_image.png"  # 聊天中图片保存路径
+embed_url = "http://127.0.0.1:8003/embeddings"#embedding的url
+vector_path = "/home/frank/fireflybot/fireflybot/plugins/firefly/vector.txt"#向量文件路径
+embed_key = "no-key"#embedding的key
+map_path = "/home/frank/fireflybot/fireflybot/plugins/firefly/map.txt"#map文件路径
 
 
 

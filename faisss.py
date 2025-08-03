@@ -2,16 +2,17 @@ import faiss
 import numpy as np
 import requests
 import openai
+import fireflybot.plugins.firefly.llm_config as llm_config
 llm_client = openai.Client(api_key="sk-",base_url="http://127.0.0.1:8002/v1")#初始化openai客户端
 index = faiss.IndexFlatL2(1024)# 构建索引(1024维)
 def request(text):
-    url = "http://127.0.0.1:8003/embeddings"#请求的url，改成你自己的
+    url = llm_config.embedding_url#请求的url，改成你自己的
     payload = {
         "content" : text#请求的文本
         }
     headers = {#请求头
             "Content-Type": "application/json",
-            "Authorization": "Bearer no-key",#没写key
+            "Authorization": f"Bearer {llm_config.embedding_key}",#没写key
             "content-type": "application/json"
         }
     response = requests.request("POST", url, json=payload, headers=headers)#发送请求
@@ -19,7 +20,7 @@ def request(text):
     return result[0]["embedding"][0]#返回向量
 
    
-with open('/home/frank/fireflybot/fireflybot/plugins/firefly/vector.txt', 'r',encoding='utf-8') as file:#打开文件 
+with open(llm_config.vector_path, 'r',encoding='utf-8') as file:#打开文件 
     line = file.readline() #读取文件中的向量
     while line:#读取文件中的向量
         list = []#列表
@@ -35,7 +36,7 @@ def check(text,k,max):
     D, I = index.search(query_vector, k)#D是距离，I是索引
     print(D,I)#输出距离和索引,调试用的
     what = []
-    with open("/home/frank/fireflybot/fireflybot/plugins/firefly/map.txt", 'r',encoding='utf-8') as file:#打开文件，读取文本，找到最相似的文本
+    with open(llm_config.map_path, 'r',encoding='utf-8') as file:#打开文件，读取文本，找到最相似的文本
         line = file.readline()#读取文件中的文本，一行一行读取
         counts = 0#计数器
         while line:
@@ -46,33 +47,3 @@ def check(text,k,max):
             counts += 1
             line = file.readline()
     return what#返回最相似的文本
-async def check_with_llm(question,content,num):
-    """
-    使用LLM检查内容的相似性
-    :param content: 输入的文本内容
-    :param k: 返回的最相似文本数量
-    :param max_distance: 最大距离阈值
-    :return: 最相似的文本列表
-    """
-    content = [c.replace("\n\n", "\n") for c in content]  # 对列表中的每个元素去除换行符
-    messages=[
-            {"role": "user", "content": f"你是一个文本信息提供者，根据参考内容为名为“流萤”的人回答该问题提供信息，\n【参考内容】：“{content}”问题是：“{question}”"},
-        ],
-    print(messages)
-    completion = llm_client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "user", "content": f"你是一个文本信息提供者，根据参考内容为名为“流萤”的人回答该问题提供信息，\n【参考内容】：“{content}”问题是：“{question}”"},
-        ],
-        temperature=0,
-        max_tokens=200,
-        top_p=0.1,
-        frequency_penalty=0,
-        presence_penalty=0,
-    )
-    response = completion.choices[0].message.content.strip()
-    print(f"RAGLLM回复: {response}")  # 调试输出LLM的回复
-    num_list = response.split()
-    num_list = [int(i) for i in num_list if i.isdigit()]
-    return_list = [content[i] for i in num_list if i < len(content)]  # 根据序号获取对应的文本内容
-    return return_list  # 返回最相似的文本列表
