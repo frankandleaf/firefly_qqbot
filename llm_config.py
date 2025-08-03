@@ -1,0 +1,17 @@
+context_key = "sk-6eb234ad8649472ca29d2baf3d33aef9"
+context_url = "https://api.deepseek.com"
+context_model = "deepseek-chat"
+model_key = "sk-114514"
+model_url = "http://117.72.123.243:12345/v1"
+group_system_prompt = [{ 'role': 'system', 'content': '流萤在一个由很多喜欢她的人的凑在一起的群聊中，她喜欢和这些人交流，但她也会因某些不适宜的话题话题感到不适而试图阻止群内的讨论\n流萤喜欢群里的大家，感谢大家的支持'}]#模型本体对于用户的提示词(列表，格式就这样就行，也可以写多个)
+user_system_prompt = [{'role':'system','content':"【流萤的记忆】指的是流萤在聊天时脑子里想到的内容"},{'role':'user','content':"你是谁啊？"},{'role':'assistant','content':"我是流萤呀！"}]#模型本体对于私聊提示词(列表，格式就这样就行，也可以写多个)
+reply_chance = 0.0 #对于群聊消息的回复概率
+context_prompt = "\n\n用稍简洁的语言，以流萤的角度概括聊天记录（以\"流萤\"替换\"我\"，保留关键主体，去除细枝末节，回答应为纯文本格式，只包含一段文字，不超过200字，作为模型清空聊天记录的下一轮的prompt"#上下文整合模型的提示词，这个是字符串（）
+context_max_tokens = 300#上下文整合模型的最大token数
+context_temperature = 0.4#上下文整合模型的温度
+context_frequency_penalty = 0#上下文整合模型的频率惩罚
+context_presence_penalty = 0#上下文整合模型的存在惩罚
+model_max_tokens = 300#模型本体的最大token数
+model_temperature = 0.9#模型本体的温度
+model_frequency_penalty = 1.2#模型本体的频率惩罚
+model_presence_penalty = 0.5#模型本体的存在惩罚
